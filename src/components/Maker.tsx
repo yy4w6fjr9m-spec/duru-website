@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { searchTracks, getTrack, yearOf, type DeezerTrack } from '../lib/deezer'
 import { findOriginalYear } from '../lib/musicbrainz'
-import { cardUrl, type QrMode } from '../lib/playUrl'
+import { cardUrl, QR_MODES, type QrMode } from '../lib/playUrl'
 import * as spotify from '../lib/spotify'
+import YoutubePicker from './YoutubePicker'
 import type { Card } from '../types'
 
 const STORAGE_KEY = 'hitster-deck'
@@ -18,11 +19,27 @@ function loadDeck(): Card[] {
   }
 }
 
+const QR_MODE_LABELS: Record<QrMode, { label: string; hint: string }> = {
+  youtube: {
+    label: 'SongSeeker',
+    hint: 'Scan with SongSeeker (songseeker.grub3r.io) on your phone: full song via YouTube, title hidden. No Spotify needed.',
+  },
+  spotify: {
+    label: 'Spotify app',
+    hint: 'The phone camera opens the song in Spotify (tap play there). The title shows, so turn the phone face down.',
+  },
+  player: {
+    label: 'Preview player',
+    hint: 'Plays a 30-second preview on this site without showing the title.',
+  },
+}
+
 function loadQrMode(): QrMode {
   try {
-    return localStorage.getItem(QR_MODE_KEY) === 'player' ? 'player' : 'spotify'
+    const saved = localStorage.getItem(QR_MODE_KEY) as QrMode
+    return QR_MODES.includes(saved) ? saved : 'youtube'
   } catch {
-    return 'spotify'
+    return 'youtube'
   }
 }
 
@@ -59,6 +76,8 @@ export default function Maker() {
   const [qrMode, setQrMode] = useState<QrMode>(loadQrMode)
   const loggedIn = spotify.isLoggedIn()
   const useSpotify = qrMode === 'spotify'
+  const useYoutube = qrMode === 'youtube'
+  const missingYoutube = useYoutube ? deck.filter((c) => !c.youtubeId).length : 0
 
   useEffect(() => {
     try {
@@ -121,9 +140,9 @@ export default function Maker() {
   }
 
   function addDraft() {
-    if (!draft || !draft.year) return
-    const { deezerId, title, artist, year, spotifyId } = draft
-    setDeck((d) => [...d, { deezerId, title, artist, year, spotifyId }])
+    if (!draft || !draft.year || (useYoutube && !draft.youtubeId)) return
+    const { deezerId, title, artist, year, spotifyId, youtubeId } = draft
+    setDeck((d) => [...d, { deezerId, title, artist, year, spotifyId, youtubeId }])
     setDraft(undefined)
     setQuery('')
   }
@@ -157,29 +176,21 @@ export default function Maker() {
       <h1>Hitster Card Maker</h1>
 
       <section className="settings">
-        <div className="segmented" role="radiogroup" aria-label="What the QR code opens">
-          <button
-            role="radio"
-            aria-checked={useSpotify}
-            className={useSpotify ? 'active' : ''}
-            onClick={() => setQrMode('spotify')}
-          >
-            QR opens Spotify app
-          </button>
-          <button
-            role="radio"
-            aria-checked={!useSpotify}
-            className={!useSpotify ? 'active' : ''}
-            onClick={() => setQrMode('player')}
-          >
-            QR opens blind player
-          </button>
+        <p className="settings-label">QR code plays the song with</p>
+        <div className="segmented" role="radiogroup" aria-label="QR code plays the song with">
+          {QR_MODES.map((mode) => (
+            <button
+              key={mode}
+              role="radio"
+              aria-checked={qrMode === mode}
+              className={qrMode === mode ? 'active' : ''}
+              onClick={() => setQrMode(mode)}
+            >
+              {QR_MODE_LABELS[mode].label}
+            </button>
+          ))}
         </div>
-        <p className="hint">
-          {useSpotify
-            ? 'Full song in Spotify. The title shows on screen, so turn the phone face down.'
-            : 'Plays on this site without showing the title (30-second preview, or full song if Spotify works).'}
-        </p>
+        <p className="hint">{QR_MODE_LABELS[qrMode].hint}</p>
         {useSpotify && !loggedIn && (
           <div className="notice">
             <span>Connect Spotify so the site can find each song’s Spotify link.</span>
@@ -251,8 +262,17 @@ export default function Maker() {
                 {draft.spotifyLookup === 'missing' && 'Not found on Spotify; this card’s QR opens the blind player.'}
               </p>
             )}
+            {useYoutube && (
+              <YoutubePicker
+                key={draft.deezerId}
+                artist={draft.artist}
+                title={draft.title}
+                value={draft.youtubeId}
+                onChange={(youtubeId) => setDraft((d) => d && { ...d, youtubeId })}
+              />
+            )}
             <div className="row">
-              <button onClick={addDraft} disabled={!draft.year}>
+              <button onClick={addDraft} disabled={!draft.year || (useYoutube && !draft.youtubeId)}>
                 Add to deck
               </button>
               <button className="secondary" onClick={() => setDraft(undefined)}>
@@ -287,11 +307,22 @@ export default function Maker() {
                       {c.artist}
                       {useSpotify && loggedIn && !c.spotifyId && ' · no Spotify link yet'}
                     </small>
+                    {useYoutube && !c.youtubeId && (
+                      <YoutubePicker
+                        compact
+                        artist={c.artist}
+                        title={c.title}
+                        value={c.youtubeId}
+                        onChange={(youtubeId) => updateCard(i, { youtubeId })}
+                      />
+                    )}
                   </td>
                   <td className="actions">
-                    <a href={cardUrl(baseUrl, c, qrMode)} target="_blank" rel="noreferrer">
-                      Test
-                    </a>
+                    {cardUrl(baseUrl, c, qrMode) && (
+                      <a href={cardUrl(baseUrl, c, qrMode)} target="_blank" rel="noreferrer">
+                        {useYoutube ? 'Video' : 'Test'}
+                      </a>
+                    )}
                     <button className="secondary" onClick={() => setDeck((d) => d.filter((_, j) => j !== i))}>
                       Remove
                     </button>
@@ -302,10 +333,15 @@ export default function Maker() {
           </table>
         )}
 
-        <button className="download" onClick={download} disabled={!deck.length || busy}>
+        <button className="download" onClick={download} disabled={!deck.length || busy || missingYoutube > 0}>
           {busy ? 'Making PDF…' : 'Download PDF'}
         </button>
-        {isLocal && !useSpotify && deck.length > 0 && (
+        {missingYoutube > 0 && (
+          <p className="error">
+            {missingYoutube === 1 ? '1 card needs' : `${missingYoutube} cards need`} a YouTube video first (see above).
+          </p>
+        )}
+        {isLocal && qrMode === 'player' && deck.length > 0 && (
           <p className="hint">
             Note: QR codes point to {baseUrl}, which a phone can't reach. Make the PDF from the live site (or set
             VITE_PUBLIC_URL) before printing.

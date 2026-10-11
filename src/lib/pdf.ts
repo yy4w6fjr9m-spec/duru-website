@@ -1,7 +1,7 @@
 import { PDFDocument, PDFFont, PDFPage, StandardFonts, rgb, type RGB } from 'pdf-lib'
 import QRCode from 'qrcode'
 import type { Card } from '../types'
-import { cardUrl, type QrMode } from './playUrl'
+import { cardUrl, playUrl, type QrMode } from './playUrl'
 
 const MM = 72 / 25.4
 const PAGE_W = 210 * MM // A4
@@ -45,7 +45,7 @@ export async function generateDeckPdf(cards: Card[], baseUrl: string, mode: QrMo
       const col = i % COLS
       const row = Math.floor(i / COLS)
       const y = PAGE_H - MARGIN_Y - (row + 1) * CARD
-      drawFront(front, MARGIN_X + col * CARD, y, cardUrl(baseUrl, card, mode))
+      drawFront(front, MARGIN_X + col * CARD, y, cardUrl(baseUrl, card, mode) ?? playUrl(baseUrl, card))
       const mirroredX = MARGIN_X + (COLS - 1 - col) * CARD
       drawBack(back, mirroredX, y, card, BACK_COLORS[(start + i) % BACK_COLORS.length], fonts)
     })

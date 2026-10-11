@@ -362,3 +362,105 @@ input {
 .notice button {
   background: #1db954;
 }
+
+.settings-label {
+  margin: 0 0 0.4rem;
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+.yt-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.yt-picker.compact {
+  margin-top: 0.4rem;
+}
+
+.yt-label {
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+.yt-picker .hint,
+.yt-picker .error {
+  margin: 0;
+}
+
+.yt-results {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.draft-fields .yt-results label,
+.yt-results label {
+  display: flex;
+  flex-direction: row;
+  font-size: 1rem;
+  color: var(--text);
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.yt-results label.selected {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+.yt-results img {
+  border-radius: 4px;
+  flex: none;
+  object-fit: cover;
+}
+
+.yt-results span {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+  font-size: 0.85rem;
+}
+
+.yt-results strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.yt-results small {
+  color: var(--muted);
+}
+
+.yt-results a {
+  color: var(--accent);
+  text-decoration: none;
+  padding: 0 0.25rem;
+}
+
+.yt-paste {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.yt-paste input {
+  flex: 1 1 180px;
+  color: var(--text);
+}
+
+.yt-paste a {
+  color: var(--accent);
+  font-size: 0.875rem;
+  white-space: nowrap;
+}

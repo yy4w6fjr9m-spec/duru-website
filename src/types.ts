@@ -6,4 +6,6 @@ export interface Card {
   year: number
   /** Spotify track id; when set (and the deck uses Spotify QR codes) the QR opens Spotify. */
   spotifyId?: string
+  /** YouTube video id; the QR code for SongSeeker contains this video's link. */
+  youtubeId?: string
 }
