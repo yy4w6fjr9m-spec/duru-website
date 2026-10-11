@@ -104,7 +104,6 @@ async function accessToken(): Promise<string> {
 }
 
 export class NotLoggedInError extends Error {}
-export class NoDeviceError extends Error {}
 
 async function api(path: string, init: RequestInit = {}): Promise<Response> {
   const res = await fetch(`https://api.spotify.com/v1${path}`, {
@@ -132,27 +131,47 @@ export async function findSpotifyTrack(isrc: string | undefined, title: string, 
 
 interface Device {
   id: string
+  name: string
   is_active: boolean
+  is_restricted: boolean
   type: string
 }
 
-async function pickDevice(): Promise<string> {
-  const res = await api('/me/player/devices')
-  const devices: Device[] = res.ok ? (await res.json()).devices : []
-  const device =
-    devices.find((d) => d.is_active) ?? devices.find((d) => d.type === 'Smartphone') ?? devices[0]
-  if (!device) throw new NoDeviceError()
-  return device.id
+export class NoDeviceError extends Error {}
+
+async function errorMessage(res: Response): Promise<string> {
+  try {
+    const body = await res.json()
+    return body.error?.message ?? `HTTP ${res.status}`
+  } catch {
+    return `HTTP ${res.status}`
+  }
 }
 
+async function getDevices(): Promise<Device[]> {
+  const res = await api('/me/player/devices')
+  return res.ok ? ((await res.json()).devices as Device[]).filter((d) => !d.is_restricted) : []
+}
+
+/**
+ * Plays a track via Spotify Connect. First on whatever device is already active
+ * (the phone, or a speaker it's connected to); if none is, on the best available one.
+ * iOS only lists the Spotify app as a device after it has played something recently.
+ */
 export async function playTrack(uri: string) {
-  const deviceId = await pickDevice()
-  const res = await api(`/me/player/play?device_id=${deviceId}`, {
-    method: 'PUT',
-    body: JSON.stringify({ uris: [uri] }),
-  })
+  const body = JSON.stringify({ uris: [uri] })
+  let res = await api('/me/player/play', { method: 'PUT', body })
+  if (res.ok) return
+  if (res.status !== 404) throw new Error(`Spotify: ${await errorMessage(res)}`)
+
+  const devices = await getDevices()
+  const device = devices.find((d) => d.type === 'Smartphone') ?? devices[0]
+  if (!device) throw new NoDeviceError()
+
+  res = await api(`/me/player/play?device_id=${device.id}`, { method: 'PUT', body })
+  if (res.ok) return
   if (res.status === 404) throw new NoDeviceError()
-  if (!res.ok) throw new Error(`Spotify couldn't start playback (${res.status})`)
+  throw new Error(`Spotify (${device.name}): ${await errorMessage(res)}`)
 }
 
 export async function pause() {

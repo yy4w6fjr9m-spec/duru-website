@@ -17,6 +17,7 @@ export default function Player({ trackId }: { trackId: number }) {
   const [message, setMessage] = useState<string>()
   const [playing, setPlaying] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [needsWakeUp, setNeedsWakeUp] = useState(false)
   const [progress, setProgress] = useState(0)
 
   useEffect(() => {
@@ -29,6 +30,7 @@ export default function Player({ trackId }: { trackId: number }) {
     if (!track) return
     setBusy(true)
     setMessage(undefined)
+    setNeedsWakeUp(false)
     try {
       if (playing) {
         await spotify.pause()
@@ -45,8 +47,7 @@ export default function Player({ trackId }: { trackId: number }) {
       setPlaying(true)
     } catch (e) {
       if (e instanceof spotify.NotLoggedInError) setMode('preview')
-      else if (e instanceof spotify.NoDeviceError)
-        setMessage('Open the Spotify app for a moment so it wakes up, then come back and tap play again.')
+      else if (e instanceof spotify.NoDeviceError) setNeedsWakeUp(true)
       else setMessage((e as Error).message)
     } finally {
       setBusy(false)
@@ -87,6 +88,17 @@ export default function Player({ trackId }: { trackId: number }) {
       )}
       <p className="player-hint">{track ? 'Guess the year!' : 'Loading…'}</p>
       {message && <p className="player-message">{message}</p>}
+      {needsWakeUp && (
+        <div className="player-message">
+          <p>
+            Spotify isn’t awake on this phone. Open Spotify, <strong>play any song for a second</strong>, then come
+            back here and tap ▶ again.
+          </p>
+          <a className="button-link" href="spotify:">
+            Open Spotify
+          </a>
+        </div>
+      )}
 
       {spotify.spotifyConfigured && mode === 'preview' && (
         <button className="secondary" onClick={() => spotify.login()}>
