@@ -294,3 +294,17 @@ input {
   font-size: 0.875rem;
   margin: 0;
 }
+
+.player-message p {
+  margin: 0 0 0.75rem;
+}
+
+.button-link {
+  display: inline-block;
+  border-radius: 8px;
+  padding: 0.55rem 1rem;
+  background: #1db954;
+  color: #fff;
+  font-weight: 600;
+  text-decoration: none;
+}
