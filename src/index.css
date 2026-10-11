@@ -308,3 +308,11 @@ input {
   font-weight: 600;
   text-decoration: none;
 }
+
+.player-debug {
+  max-width: 300px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.75rem;
+  margin: 0;
+}

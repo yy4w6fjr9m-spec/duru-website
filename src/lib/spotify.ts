@@ -1,11 +1,12 @@
 // Spotify login (Authorization Code with PKCE, so no client secret is needed) and
-// Spotify Connect playback: the player page tells the Spotify app on the phone what
-// to play. The Web Playback SDK can't be used because it doesn't work in iOS Safari.
+// playback. The page first tries to become a Spotify player itself (Web Playback SDK),
+// because iOS keeps suspending the Spotify app, which breaks remote control of it.
+// Spotify Connect (telling the Spotify app what to play) is the fallback.
 
 // A client ID is public (it appears in the login URL); only the secret must stay private,
 // and PKCE doesn't use one.
 const CLIENT_ID: string = import.meta.env.VITE_SPOTIFY_CLIENT_ID || '6ea77af63df04dca86eb4985466adb81'
-const SCOPES = 'user-read-playback-state user-modify-playback-state'
+const SCOPES = 'streaming user-read-email user-read-private user-read-playback-state user-modify-playback-state'
 const TOKEN_KEY = 'spotify-token'
 const VERIFIER_KEY = 'spotify-verifier'
 const RETURN_KEY = 'spotify-return-to'
@@ -14,6 +15,7 @@ interface StoredToken {
   access: string
   refresh: string
   expiresAt: number
+  scope: string
 }
 
 export const spotifyConfigured = Boolean(CLIENT_ID)
@@ -28,17 +30,19 @@ function readToken(): StoredToken | undefined {
   }
 }
 
-function saveToken(data: { access_token: string; refresh_token?: string; expires_in: number }) {
+function saveToken(data: { access_token: string; refresh_token?: string; expires_in: number; scope?: string }) {
   const previous = readToken()
   const token: StoredToken = {
     access: data.access_token,
     refresh: data.refresh_token ?? previous?.refresh ?? '',
     expiresAt: Date.now() + (data.expires_in - 60) * 1000,
+    scope: data.scope ?? previous?.scope ?? '',
   }
   localStorage.setItem(TOKEN_KEY, JSON.stringify(token))
 }
 
-export const isLoggedIn = () => Boolean(readToken())
+// Logins from before the web player was added lack the `streaming` scope; ask again.
+export const isLoggedIn = () => Boolean(readToken()?.scope?.includes('streaming'))
 
 export function logout() {
   localStorage.removeItem(TOKEN_KEY)
@@ -90,7 +94,7 @@ export async function handleLoginRedirect(code: string): Promise<string> {
   return returnTo
 }
 
-async function accessToken(): Promise<string> {
+export async function accessToken(): Promise<string> {
   const token = readToken()
   if (!token) throw new NotLoggedInError()
   if (Date.now() < token.expiresAt) return token.access
@@ -176,4 +180,13 @@ export async function playTrack(uri: string) {
 
 export async function pause() {
   await api('/me/player/pause', { method: 'PUT' })
+}
+
+/** Plays a track on a specific device, such as the in-page web player. */
+export async function playOnDevice(uri: string, deviceId: string) {
+  const res = await api(`/me/player/play?device_id=${deviceId}`, {
+    method: 'PUT',
+    body: JSON.stringify({ uris: [uri] }),
+  })
+  if (!res.ok) throw new Error(`Spotify: ${await errorMessage(res)}`)
 }
