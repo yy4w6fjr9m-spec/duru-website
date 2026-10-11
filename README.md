@@ -25,7 +25,7 @@ on a phone; make them from the live site, or set `VITE_PUBLIC_URL` (see `.env.ex
 
 ## Full songs with Spotify (optional)
 
-Set `VITE_SPOTIFY_CLIENT_ID` (see `.env.example`). The player page then offers "Connect Spotify":
+The Spotify client ID is set in `src/lib/spotify.ts` (override with `VITE_SPOTIFY_CLIENT_ID`). The player page then offers "Connect Spotify":
 it logs in with PKCE (no client secret) and plays the full song on the phone's Spotify app via
 Spotify Connect, matching the Deezer track to Spotify by ISRC. Without it, the 30-second preview plays.
 

@@ -2,7 +2,9 @@
 // Spotify Connect playback: the player page tells the Spotify app on the phone what
 // to play. The Web Playback SDK can't be used because it doesn't work in iOS Safari.
 
-const CLIENT_ID = import.meta.env.VITE_SPOTIFY_CLIENT_ID as string | undefined
+// A client ID is public (it appears in the login URL); only the secret must stay private,
+// and PKCE doesn't use one.
+const CLIENT_ID: string = import.meta.env.VITE_SPOTIFY_CLIENT_ID || '6ea77af63df04dca86eb4985466adb81'
 const SCOPES = 'user-read-playback-state user-modify-playback-state'
 const TOKEN_KEY = 'spotify-token'
 const VERIFIER_KEY = 'spotify-verifier'
