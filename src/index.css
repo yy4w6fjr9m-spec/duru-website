@@ -286,3 +286,11 @@ input {
 .player-error {
   color: var(--muted);
 }
+
+.player-message {
+  max-width: 300px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.875rem;
+  margin: 0;
+}

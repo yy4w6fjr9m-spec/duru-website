@@ -5,6 +5,7 @@ export interface DeezerTrack {
   title: string
   title_short: string
   preview: string
+  isrc?: string
   release_date?: string
   artist: { name: string }
   album: { title: string; cover_small: string; release_date?: string }

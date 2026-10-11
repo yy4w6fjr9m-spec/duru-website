@@ -22,3 +22,13 @@ Deezer's API has no CORS headers, so `/api/deezer/*` is proxied: by Vite in deve
 
 QR codes point to the address the site is opened from. PDFs made on `localhost` won't scan
 on a phone; make them from the live site, or set `VITE_PUBLIC_URL` (see `.env.example`).
+
+## Full songs with Spotify (optional)
+
+Set `VITE_SPOTIFY_CLIENT_ID` (see `.env.example`). The player page then offers "Connect Spotify":
+it logs in with PKCE (no client secret) and plays the full song on the phone's Spotify app via
+Spotify Connect, matching the Deezer track to Spotify by ISRC. Without it, the 30-second preview plays.
+
+In the Spotify developer dashboard, add the site address with a trailing slash as a Redirect URI
+(e.g. `https://your-site.vercel.app/`; for local dev use `http://127.0.0.1:5173/`, since Spotify
+rejects `localhost`), and add each player's Spotify account under User Management (max 5).
