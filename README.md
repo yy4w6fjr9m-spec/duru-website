@@ -2,8 +2,10 @@
 
 Search a song, check its year, and download a printable PDF of Hitster-style cards.
 
-- **Front:** a QR code that opens this site's blind player (`/?p=<deezer track id>`), which plays
-  a 30-second Deezer preview without showing the title.
+- **Front:** a QR code. By default it opens the song in the Spotify app
+  (`open.spotify.com/track/…`; the title is visible, so turn the phone face down). Alternatively
+  it opens this site's blind player (`/?p=<deezer track id>`), which plays without showing the title.
+  Finding each song's Spotify link needs a Spotify login on the card maker.
 - **Back:** artist, year and title. Backs are mirrored so they line up when printed
   double-sided (flip on the long edge, 100% scale).
 
