@@ -1,32 +1,24 @@
-# React + TypeScript + Vite
+# Hitster Card Maker
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Search a song, check its year, and download a printable PDF of Hitster-style cards.
 
-Currently, two official plugins are available:
+- **Front:** a QR code that opens this site's blind player (`/?p=<deezer track id>`), which plays
+  a 30-second Deezer preview without showing the title.
+- **Back:** artist, year and title. Backs are mirrored so they line up when printed
+  double-sided (flip on the long edge, 100% scale).
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Song search and previews come from the Deezer API (no key needed). The original release
+year comes from MusicBrainz, because streaming services often list a remaster's year.
 
-## React Compiler
+## Develop
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```sh
+npm install
+npm run dev
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+Deezer's API has no CORS headers, so `/api/deezer/*` is proxied: by Vite in development and by
+`vercel.json` in production.
+
+QR codes point to the address the site is opened from. PDFs made on `localhost` won't scan
+on a phone; make them from the live site, or set `VITE_PUBLIC_URL` (see `.env.example`).
