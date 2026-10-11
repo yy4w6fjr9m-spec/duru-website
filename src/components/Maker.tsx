@@ -164,7 +164,7 @@ export default function Maker() {
             className={useSpotify ? 'active' : ''}
             onClick={() => setQrMode('spotify')}
           >
-            QR plays in Spotify
+            QR opens Spotify app
           </button>
           <button
             role="radio"
@@ -177,12 +177,12 @@ export default function Maker() {
         </div>
         <p className="hint">
           {useSpotify
-            ? 'Full song in Spotify. Scanning starts the song by itself while Spotify is playing; otherwise it opens the song in Spotify. Turn the phone face down.'
+            ? 'Full song in Spotify. The title shows on screen, so turn the phone face down.'
             : 'Plays on this site without showing the title (30-second preview, or full song if Spotify works).'}
         </p>
         {useSpotify && !loggedIn && (
           <div className="notice">
-            <span>Connect Spotify on every phone that scans cards, so the site can find each song and start it.</span>
+            <span>Connect Spotify so the site can find each song’s Spotify link.</span>
             <button onClick={() => spotify.login()}>Connect Spotify</button>
           </div>
         )}

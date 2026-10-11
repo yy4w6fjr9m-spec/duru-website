@@ -183,11 +183,6 @@ export async function playTrack(uri: string) {
   throw new Error(`Spotify (${device.name}): ${await errorMessage(res)}`)
 }
 
-export async function resume() {
-  const res = await api('/me/player/play', { method: 'PUT' })
-  if (!res.ok) throw new Error(`Spotify: ${await errorMessage(res)}`)
-}
-
 export async function pause() {
   await api('/me/player/pause', { method: 'PUT' })
 }
