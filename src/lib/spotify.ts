@@ -121,6 +121,11 @@ async function api(path: string, init: RequestInit = {}): Promise<Response> {
   return res
 }
 
+/** Spotify track id of a song, or undefined if it isn't on Spotify. */
+export async function findSpotifyId(isrc: string | undefined, title: string, artist: string) {
+  return (await findSpotifyTrack(isrc, title, artist))?.replace('spotify:track:', '')
+}
+
 /** Finds the Spotify version of a song: by ISRC first, then by title and artist. */
 export async function findSpotifyTrack(isrc: string | undefined, title: string, artist: string) {
   const queries = [isrc && `isrc:${isrc}`, `track:${title} artist:${artist}`].filter(Boolean) as string[]

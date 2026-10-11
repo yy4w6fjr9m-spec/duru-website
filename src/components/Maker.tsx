@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import { searchTracks, getTrack, yearOf, type DeezerTrack } from '../lib/deezer'
 import { findOriginalYear } from '../lib/musicbrainz'
-import { playUrl } from '../lib/playUrl'
+import { cardUrl, type QrMode } from '../lib/playUrl'
+import * as spotify from '../lib/spotify'
 import type { Card } from '../types'
 
 const STORAGE_KEY = 'hitster-deck'
+const QR_MODE_KEY = 'hitster-qr-mode'
 const baseUrl = import.meta.env.VITE_PUBLIC_URL || window.location.origin
 const isLocal = /localhost|127\.0\.0\.1/.test(baseUrl)
 
@@ -16,10 +18,34 @@ function loadDeck(): Card[] {
   }
 }
 
+function loadQrMode(): QrMode {
+  try {
+    return localStorage.getItem(QR_MODE_KEY) === 'player' ? 'player' : 'spotify'
+  } catch {
+    return 'spotify'
+  }
+}
+
+/** Looks up Spotify ids for cards that don't have one yet. Needs a Spotify login. */
+async function withSpotifyIds(cards: Card[]): Promise<Card[]> {
+  const out: Card[] = []
+  for (const card of cards) {
+    if (card.spotifyId) {
+      out.push(card)
+      continue
+    }
+    const full = await getTrack(card.deezerId).catch(() => undefined)
+    const spotifyId = await spotify.findSpotifyId(full?.isrc, card.title, card.artist).catch(() => undefined)
+    out.push({ ...card, spotifyId })
+  }
+  return out
+}
+
 interface Draft extends Card {
   loadingYear: boolean
   streamingYear?: number
   originalYear?: number
+  spotifyLookup?: 'pending' | 'found' | 'missing' | 'skipped'
 }
 
 export default function Maker() {
@@ -30,6 +56,9 @@ export default function Maker() {
   const [error, setError] = useState<string>()
   const [draft, setDraft] = useState<Draft>()
   const [busy, setBusy] = useState(false)
+  const [qrMode, setQrMode] = useState<QrMode>(loadQrMode)
+  const loggedIn = spotify.isLoggedIn()
+  const useSpotify = qrMode === 'spotify'
 
   useEffect(() => {
     try {
@@ -38,6 +67,14 @@ export default function Maker() {
       // Storage unavailable (private mode); the deck just won't persist.
     }
   }, [deck])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(QR_MODE_KEY, qrMode)
+    } catch {
+      // Not persisted; fine.
+    }
+  }, [qrMode])
 
   async function search(e: React.FormEvent) {
     e.preventDefault()
@@ -56,10 +93,22 @@ export default function Maker() {
   async function pick(track: DeezerTrack) {
     setResults([])
     const base = { deezerId: track.id, title: track.title_short, artist: track.artist.name }
-    setDraft({ ...base, year: 0, loadingYear: true })
+    setDraft({ ...base, year: 0, loadingYear: true, spotifyLookup: loggedIn ? 'pending' : 'skipped' })
+
+    const fullTrack = getTrack(track.id).catch(() => undefined)
+    if (loggedIn) {
+      fullTrack
+        .then((full) => spotify.findSpotifyId(full?.isrc, base.title, base.artist))
+        .catch(() => undefined)
+        .then((spotifyId) =>
+          setDraft((d) =>
+            d?.deezerId === track.id ? { ...d, spotifyId, spotifyLookup: spotifyId ? 'found' : 'missing' } : d,
+          ),
+        )
+    }
 
     const [full, original] = await Promise.all([
-      getTrack(track.id).catch(() => undefined),
+      fullTrack,
       findOriginalYear(base.artist, base.title).catch(() => undefined),
     ])
     const streamingYear = yearOf(full?.release_date) ?? yearOf(full?.album.release_date)
@@ -73,8 +122,8 @@ export default function Maker() {
 
   function addDraft() {
     if (!draft || !draft.year) return
-    const { deezerId, title, artist, year } = draft
-    setDeck((d) => [...d, { deezerId, title, artist, year }])
+    const { deezerId, title, artist, year, spotifyId } = draft
+    setDeck((d) => [...d, { deezerId, title, artist, year, spotifyId }])
     setDraft(undefined)
     setQuery('')
   }
@@ -85,8 +134,13 @@ export default function Maker() {
   async function download() {
     setBusy(true)
     try {
+      let cards = deck
+      if (useSpotify && loggedIn && deck.some((c) => !c.spotifyId)) {
+        cards = await withSpotifyIds(deck)
+        setDeck(cards)
+      }
       const { generateDeckPdf } = await import('../lib/pdf')
-      const bytes = await generateDeckPdf(deck, baseUrl)
+      const bytes = await generateDeckPdf(cards, baseUrl, qrMode)
       const url = URL.createObjectURL(new Blob([bytes as BlobPart], { type: 'application/pdf' }))
       const a = document.createElement('a')
       a.href = url
@@ -101,6 +155,38 @@ export default function Maker() {
   return (
     <main className="maker">
       <h1>Hitster Card Maker</h1>
+
+      <section className="settings">
+        <div className="segmented" role="radiogroup" aria-label="What the QR code opens">
+          <button
+            role="radio"
+            aria-checked={useSpotify}
+            className={useSpotify ? 'active' : ''}
+            onClick={() => setQrMode('spotify')}
+          >
+            QR opens Spotify app
+          </button>
+          <button
+            role="radio"
+            aria-checked={!useSpotify}
+            className={!useSpotify ? 'active' : ''}
+            onClick={() => setQrMode('player')}
+          >
+            QR opens blind player
+          </button>
+        </div>
+        <p className="hint">
+          {useSpotify
+            ? 'Full song in Spotify. The title shows on screen, so turn the phone face down.'
+            : 'Plays on this site without showing the title (30-second preview, or full song if Spotify works).'}
+        </p>
+        {useSpotify && !loggedIn && (
+          <div className="notice">
+            <span>Connect Spotify so the site can find each song’s Spotify link.</span>
+            <button onClick={() => spotify.login()}>Connect Spotify</button>
+          </div>
+        )}
+      </section>
 
       <form className="search" onSubmit={search}>
         <input
@@ -158,6 +244,13 @@ export default function Maker() {
                 {draft.originalYear ?? '?'}. Check it if they differ.
               </p>
             )}
+            {useSpotify && draft.spotifyLookup !== 'skipped' && (
+              <p className="hint">
+                {draft.spotifyLookup === 'pending' && 'Finding it on Spotify…'}
+                {draft.spotifyLookup === 'found' && 'Found on Spotify ✓'}
+                {draft.spotifyLookup === 'missing' && 'Not found on Spotify; this card’s QR opens the blind player.'}
+              </p>
+            )}
             <div className="row">
               <button onClick={addDraft} disabled={!draft.year}>
                 Add to deck
@@ -190,10 +283,13 @@ export default function Maker() {
                   <td>
                     <strong>{c.title}</strong>
                     <br />
-                    <small>{c.artist}</small>
+                    <small>
+                      {c.artist}
+                      {useSpotify && loggedIn && !c.spotifyId && ' · no Spotify link yet'}
+                    </small>
                   </td>
                   <td className="actions">
-                    <a href={playUrl(baseUrl, c)} target="_blank" rel="noreferrer">
+                    <a href={cardUrl(baseUrl, c, qrMode)} target="_blank" rel="noreferrer">
                       Test
                     </a>
                     <button className="secondary" onClick={() => setDeck((d) => d.filter((_, j) => j !== i))}>
@@ -209,7 +305,7 @@ export default function Maker() {
         <button className="download" onClick={download} disabled={!deck.length || busy}>
           {busy ? 'Making PDF…' : 'Download PDF'}
         </button>
-        {isLocal && deck.length > 0 && (
+        {isLocal && !useSpotify && deck.length > 0 && (
           <p className="hint">
             Note: QR codes point to {baseUrl}, which a phone can't reach. Make the PDF from the live site (or set
             VITE_PUBLIC_URL) before printing.

@@ -4,4 +4,6 @@ export interface Card {
   title: string
   artist: string
   year: number
+  /** Spotify track id; when set (and the deck uses Spotify QR codes) the QR opens Spotify. */
+  spotifyId?: string
 }

@@ -1,7 +1,7 @@
 import { PDFDocument, PDFFont, PDFPage, StandardFonts, rgb, type RGB } from 'pdf-lib'
 import QRCode from 'qrcode'
 import type { Card } from '../types'
-import { playUrl } from './playUrl'
+import { cardUrl, type QrMode } from './playUrl'
 
 const MM = 72 / 25.4
 const PAGE_W = 210 * MM // A4
@@ -27,7 +27,7 @@ const BACK_COLORS: RGB[] = [
  * (year, artist, title), repeated. Backs are mirrored so they line up when
  * printed double-sided, flipping on the long edge.
  */
-export async function generateDeckPdf(cards: Card[], baseUrl: string): Promise<Uint8Array> {
+export async function generateDeckPdf(cards: Card[], baseUrl: string, mode: QrMode): Promise<Uint8Array> {
   const pdf = await PDFDocument.create()
   pdf.setTitle('Hitster cards')
   const fonts = {
@@ -45,7 +45,7 @@ export async function generateDeckPdf(cards: Card[], baseUrl: string): Promise<U
       const col = i % COLS
       const row = Math.floor(i / COLS)
       const y = PAGE_H - MARGIN_Y - (row + 1) * CARD
-      drawFront(front, MARGIN_X + col * CARD, y, playUrl(baseUrl, card))
+      drawFront(front, MARGIN_X + col * CARD, y, cardUrl(baseUrl, card, mode))
       const mirroredX = MARGIN_X + (COLS - 1 - col) * CARD
       drawBack(back, mirroredX, y, card, BACK_COLORS[(start + i) % BACK_COLORS.length], fonts)
     })
